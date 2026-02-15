@@ -53,10 +53,7 @@ io.on('connection', (socket) => {
     if (socket.data.user) {
         const { userId, role } = socket.data.user;
 
-        // Join user-specific room
         socket.join(`room:user:${userId}`);
-
-        // Join admin room if applicable
         if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
             socket.join('room:admins');
         }

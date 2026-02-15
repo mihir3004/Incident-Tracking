@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Bell, X, Check } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markAsRead, deleteNotification, type Notification } from '../services/notification.service';
-import io from 'socket.io-client';
+import { socket } from '../utils/socket';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { formatDistanceToNow } from 'date-fns';
@@ -39,24 +39,19 @@ const NotificationDropdown: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+        const handleUpdate = (data: any) => {
 
-        socket.on('connect', () => {
-            console.log('Connected to socket for notifications');
-        });
 
-        socket.on('newIncident', (data) => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] });
-            toast.success(`New Ticket: ${data.title}`, {
-                icon: '🎫',
-                style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #27272a' },
-            });
-        });
-
-        socket.on(`incidentUpdate:${user.id}`, (data) => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
-            if (data.type === 'ASSIGNMENT') {
+            if (String(data.actionBy) === String(user.id)) return;
+
+            if (data.type === 'NEW_INCIDENT') {
+                toast.success(`New Ticket: ${data.incident.title}`, {
+                    icon: '🎫',
+                    style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #27272a' },
+                });
+            } else if (data.type === 'ASSIGNMENT') {
                 toast(`You have been assigned: ${data.title}`, {
                     icon: '👤',
                     style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #3b82f6' },
@@ -66,16 +61,28 @@ const NotificationDropdown: React.FC = () => {
                     icon: '📚',
                     style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #3b82f6' },
                 });
+            } else if (data.status === 'RESOLVED' || data.type === 'BULK_UPDATE' && data.status === 'RESOLVED') {
+                toast.success(`Incident(s) Resolved`, {
+                    icon: '✅',
+                    style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #27272a' },
+                });
+            } else if (data.type === 'UPDATE') {
+                toast(`Incident Updated: ${data.incident.title}`, {
+                    icon: '🔔',
+                    style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #27272a' },
+                });
             } else {
-                toast(`Incident Updated: ${data.title || 'View details'}`, {
+                toast(`Incident Updated`, {
                     icon: '🔔',
                     style: { borderRadius: '10px', background: '#18181b', color: '#fff', border: '1px solid #27272a' },
                 });
             }
-        });
+        };
+
+        socket.on('incidentUpdate', handleUpdate);
 
         return () => {
-            socket.disconnect();
+            socket.off('incidentUpdate', handleUpdate);
         };
     }, [user, queryClient]);
 

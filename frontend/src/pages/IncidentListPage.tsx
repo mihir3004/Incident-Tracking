@@ -117,17 +117,24 @@ const IncidentListPage = () => {
         }
     };
 
+    const [bulkConfirmModal, setBulkConfirmModal] = useState<{ isOpen: boolean, type: 'RESOLVE' | 'ASSIGN', payload?: any }>({ isOpen: false, type: 'RESOLVE' });
+
     const handleBulkResolve = () => {
-        if (window.confirm(`Mark ${selectedIds.length} incidents as RESOLVED?`)) {
-            bulkMutation.mutate({ action: 'RESOLVE' });
-        }
+        setBulkConfirmModal({ isOpen: true, type: 'RESOLVE' });
     };
 
     const handleBulkAssign = () => {
         if (!assignee) return alert('Please select an admin to assign');
-        if (window.confirm(`Assign ${selectedIds.length} incidents to selected admin?`)) {
-            bulkMutation.mutate({ action: 'ASSIGN', payload: { assignedTo: assignee } });
+        setBulkConfirmModal({ isOpen: true, type: 'ASSIGN', payload: { assignedTo: assignee } });
+    };
+
+    const confirmBulkAction = () => {
+        if (bulkConfirmModal.type === 'RESOLVE') {
+            bulkMutation.mutate({ action: 'RESOLVE' });
+        } else if (bulkConfirmModal.type === 'ASSIGN') {
+            bulkMutation.mutate({ action: 'ASSIGN', payload: bulkConfirmModal.payload });
         }
+        setBulkConfirmModal({ ...bulkConfirmModal, isOpen: false });
     };
 
     const handleExportCSV = () => {
@@ -453,6 +460,41 @@ const IncidentListPage = () => {
                     </div>
                 </div>
             )}
+
+            <Modal
+                isOpen={bulkConfirmModal.isOpen}
+                onClose={() => setBulkConfirmModal({ ...bulkConfirmModal, isOpen: false })}
+                title={`Confirm Bulk ${bulkConfirmModal.type === 'RESOLVE' ? 'Resolution' : 'Assignment'}`}
+                footer={
+                    <>
+                        <button
+                            onClick={() => setBulkConfirmModal({ ...bulkConfirmModal, isOpen: false })}
+                            className="px-4 py-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmBulkAction}
+                            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium transition-colors"
+                        >
+                            Confirm
+                        </button>
+                    </>
+                }
+            >
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3 text-primary bg-primary/10 p-4 rounded-xl border border-primary/20">
+                        <ShieldAlert size={24} className="shrink-0" />
+                        <p className="font-medium">Action Confirmation</p>
+                    </div>
+                    <p className="text-zinc-300">
+                        {bulkConfirmModal.type === 'RESOLVE'
+                            ? `Are you sure you want to resolve ${selectedIds.length} incidents?`
+                            : `Are you sure you want to assign ${selectedIds.length} incidents to the selected admin?`
+                        }
+                    </p>
+                </div>
+            </Modal>
 
             <div className="space-y-3 pb-10">
                 {isAdmin && (

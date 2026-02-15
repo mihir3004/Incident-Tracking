@@ -10,7 +10,6 @@ interface LazyChartProps {
     loading?: boolean;
 }
 
-// Register compatibility theme
 echarts.registerTheme('zinc-dark', chartTheme);
 
 const LazyChart: React.FC<LazyChartProps> = ({ option, height = '300px', className, loading = false }) => {

@@ -11,11 +11,9 @@ import {
     TrendingUp,
     ArrowUpRight
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import LazyChart from '../components/Charts/LazyChart';
 
 const Dashboard = () => {
-    const { user } = useAuth();
     const { data: incidents, refetch } = useQuery({
         queryKey: ['incidents'],
         queryFn: async () => {
@@ -25,15 +23,13 @@ const Dashboard = () => {
     });
 
     useEffect(() => {
-        socket.on('newIncident', () => refetch());
-        if (user) {
-            socket.on(`incidentUpdate:${user.id}`, () => refetch());
-        }
+        const handleUpdate = () => refetch();
+        socket.on('incidentUpdate', handleUpdate);
+
         return () => {
-            socket.off('newIncident');
-            if (user) socket.off(`incidentUpdate:${user.id}`);
+            socket.off('incidentUpdate', handleUpdate);
         };
-    }, [user, refetch]);
+    }, [refetch]);
 
     if (!incidents) return <div className="animate-pulse">Loading dashboard...</div>;
 

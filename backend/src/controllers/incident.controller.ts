@@ -35,7 +35,7 @@ export const createIncident = async (req: AuthRequest, res: Response) => {
             relatedId: incident._id
         });
 
-        getIO().to('room:admins').emit('incidentUpdate', { type: 'NEW_INCIDENT', incident });
+        getIO().to('room:admins').emit('incidentUpdate', { type: 'NEW_INCIDENT', incident, actionBy: userId });
 
         res.status(201).json(incident);
     } catch (error) {
@@ -98,7 +98,7 @@ export const updateIncident = async (req: AuthRequest, res: Response) => {
                 type: 'INFO',
                 relatedId: updatedIncident._id
             });
-            getIO().to(`room:user:${assignedTo}`).emit('incidentUpdate', { ...updatedIncident.toObject(), type: 'ASSIGNMENT' });
+            getIO().to(`room:user:${assignedTo}`).emit('incidentUpdate', { ...updatedIncident.toObject(), type: 'ASSIGNMENT', actionBy: userId });
         }
 
         await Notification.create({
@@ -109,8 +109,8 @@ export const updateIncident = async (req: AuthRequest, res: Response) => {
             relatedId: updatedIncident._id
         });
 
-        getIO().to(`room:user:${updatedIncident.userId}`).emit('incidentUpdate', updatedIncident);
-        getIO().to('room:admins').emit('incidentUpdate', { type: 'UPDATE', incident: updatedIncident });
+        getIO().to(`room:user:${(updatedIncident.userId as any)._id}`).emit('incidentUpdate', { ...updatedIncident.toObject(), actionBy: userId });
+        getIO().to('room:admins').emit('incidentUpdate', { type: 'UPDATE', incident: updatedIncident, actionBy: userId });
 
         res.json(updatedIncident);
     } catch (error) {
@@ -130,7 +130,7 @@ export const deleteIncident = async (req: AuthRequest, res: Response) => {
 
         await Incident.findByIdAndUpdate(id, { isActive: false });
         await logAction('DELETE_INCIDENT', userId, `Incident soft deleted: ${id}`, req.ip);
-        getIO().to('room:admins').emit('incidentUpdate', { type: 'DELETE', incidentId: id });
+        getIO().to('room:admins').emit('incidentUpdate', { type: 'DELETE', incidentId: id, actionBy: userId });
 
         res.json({ message: 'Incident deleted successfully' });
     } catch (error) {
@@ -147,6 +147,8 @@ export const bulkAction = async (req: AuthRequest, res: Response) => {
         }
 
         if (action === 'RESOLVE') {
+            const incidents = await Incident.find({ _id: { $in: ids }, isActive: true });
+
             await Incident.updateMany(
                 { _id: { $in: ids }, isActive: true },
                 { status: 'RESOLVED', resolvedAt: new Date() }
@@ -154,10 +156,23 @@ export const bulkAction = async (req: AuthRequest, res: Response) => {
 
             await logAction('BULK_RESOLVE', userId, `Bulk resolved ${ids.length} incidents`, req.ip);
 
-            ids.forEach(id => {
-                getIO().to(`room:user:${userId}`).emit('incidentUpdate', { status: 'RESOLVED', _id: id });
-            });
-            getIO().to('room:admins').emit('incidentUpdate', { type: 'BULK_UPDATE', ids, status: 'RESOLVED' });
+            await Promise.all(incidents.map(async (incident) => {
+                getIO().to(`room:user:${incident.userId}`).emit('incidentUpdate', {
+                    status: 'RESOLVED',
+                    _id: incident._id,
+                    actionBy: userId
+                });
+
+                return Notification.create({
+                    recipient: incident.userId,
+                    title: 'Incident Resolved',
+                    message: `Your incident "${incident.title}" has been marked as resolved.`,
+                    type: 'SUCCESS',
+                    relatedId: incident._id
+                });
+            }));
+
+            getIO().to('room:admins').emit('incidentUpdate', { type: 'BULK_UPDATE', ids, status: 'RESOLVED', actionBy: userId });
 
         } else if (action === 'ASSIGN') {
             if (!payload?.assignedTo) {
@@ -179,8 +194,8 @@ export const bulkAction = async (req: AuthRequest, res: Response) => {
             }));
             await Notification.insertMany(notifications);
 
-            getIO().to(`room:user:${payload.assignedTo}`).emit('incidentUpdate', { type: 'BULK_ASSIGNMENT', count: ids.length });
-            getIO().to('room:admins').emit('incidentUpdate', { type: 'BULK_UPDATE', ids, assignedTo: payload.assignedTo });
+            getIO().to(`room:user:${payload.assignedTo}`).emit('incidentUpdate', { type: 'BULK_ASSIGNMENT', count: ids.length, actionBy: userId });
+            getIO().to('room:admins').emit('incidentUpdate', { type: 'BULK_UPDATE', ids, assignedTo: payload.assignedTo, actionBy: userId });
         }
 
         res.json({ message: 'Bulk action completed successfully' });

@@ -1,23 +1,24 @@
 # Secure Incident Reporting System (SIRS)
 
-A highly secure and scalable cybersecurity Incident Reporting System built with the MERN stack (MongoDB, Express, React, Node.js), TypeScript, Prisma ORM, and Socket.io.
+A highly secure and scalable cybersecurity Incident Reporting System built with the MERN stack (MongoDB, Express, React, Node.js), TypeScript, Mongoose ODM, and Socket.io.
 
 ## 🚀 Key Features
 
 ### 🔹 Advanced Dashboard (Role-Based)
 - **Users**: Submit incidents and track their own reports in a clean layout.
-- **Admins**: Analytics dashboard with pie/bar charts, incident filtering, and status management.
+- **Admins**: Analytics dashboard with interactive ECharts (Pie/Bar), incident filtering, and status management.
 - **Super Admin**: Full user management (Roles, Blocking, Deleting) and Audit Trail.
 
 ### 🔹 Security & Scalability
 - **RBAC**: Strict Role-Based Access Control on both Frontend and Backend.
 - **Audit Logging**: Comprehensive tracking of all sensitive actions (Timestamp & IP).
 - **JWT & Refresh Tokens**: Secure authentication with HttpOnly cookies.
+- **File Uploads**: Secure evidence attachment support using Multer.
 - **Real-time Notifications**: Instant updates via Socket.io when incidents are reported or updated.
 
 ### 🔹 Modern Tech Stack
-- **Frontend**: React, TypeScript, Tailwind CSS, TanStack Query, Recharts, Framer Motion.
-- **Backend**: Node.js, Express, TypeScript, Prisma (ORM), MongoDB.
+- **Frontend**: React, TypeScript, Tailwind CSS, TanStack Query, ECharts, Lucide React.
+- **Backend**: Node.js, Express, TypeScript, Mongoose (ODM), MongoDB.
 - **Infrastructure**: Docker & Docker Compose for easy deployment.
 
 ## 🛠️ Setup Instructions
@@ -34,8 +35,7 @@ A highly secure and scalable cybersecurity Incident Reporting System built with 
    ```bash
    cd backend
    npm install
-   # Configure .env (DATABASE_URL, JWT_SECRET)
-   npx prisma generate
+   # Configure .env (DATABASE_URL as MONGODB_URI, JWT_SECRET)
    npm run dev
    ```
 3. **Frontend Setup**:
